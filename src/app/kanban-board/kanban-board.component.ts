@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 
 export interface KanbanCard {
   id: string;
@@ -10,6 +11,11 @@ export interface KanbanCard {
     name: string;
     type: string;
     url: string;
+  }[];
+  comments?: {
+    id: string;
+    text: string;
+    timestamp: Date;
   }[];
 }
 
@@ -22,7 +28,7 @@ export interface KanbanColumn {
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FormsModule],
   template: `
     <div class="kanban-board">
       <div class="columns-container">
@@ -34,7 +40,7 @@ export interface KanbanColumn {
             </div>
             <div class="cards-container" (dragover)="onDragOver($event)" (drop)="onDrop($event, column.id)">
               @for (card of getCardsForColumn(column.id); track card.id) {
-                <div class="card" draggable="true" (dragstart)="onDragStart($event, card.id)" [attr.data-card-id]="card.id" [attr.data-column-id]="card.columnId">
+                <div class="card" draggable="true" (dragstart)="onDragStart($event, card.id)" [attr.data-card-id]="card.id" [attr.data-column-id]="card.columnId" (click)="openComments(card)">
                   <div class="card-header">
                     <h4>{{ card.title }}</h4>
                   </div>
@@ -49,6 +55,19 @@ export interface KanbanColumn {
                       }
                     </div>
                   }
+                  @if (card.comments && card.comments.length > 0) {
+                    <div class="card-comments">
+                      @for (comment of card.comments; track comment.id) {
+                        <div class="comment-item">
+                          {{ comment.text }}
+                        </div>
+                      }
+                    </div>
+                  }
+                  <div class="comment-form">
+                    <input type="text" class="comment-input" [(ngModel)]="commentText" placeholder="Add a comment...">
+                    <button class="comment-submit" (click)="addComment(card.id)">Post</button>
+                  </div>
                   <div class="card-actions">
                     <button class="edit-btn" (click)="editCard(card)">Edit</button>
                     <button class="delete-btn" (click)="deleteCard(card.id)">Delete</button>
@@ -222,6 +241,48 @@ export interface KanbanColumn {
 
     .card[data-column-id="done"]::before {
       background: #4caf50; /* Hijau untuk Done */
+    }
+
+    .card-comments {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #eee;
+    }
+
+    .comment-item {
+      background: rgba(67, 97, 238, 0.05);
+      border-radius: 4px;
+      padding: 8px;
+      margin-bottom: 6px;
+      font-size: 0.85em;
+    }
+
+    .comment-form {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .comment-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    .comment-submit {
+      padding: 8px 16px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85em;
+    }
+
+    .comment-submit:hover {
+      background: var(--secondary-color);
     }
 
     .card:hover {
@@ -544,19 +605,22 @@ export class KanbanBoardComponent {
       id: '1',
       title: 'Implement Kanban Board',
       description: 'Create the initial structure with columns and basic cards',
-      columnId: 'todo'
+      columnId: 'todo',
+      comments: []
     },
     {
       id: '2',
       title: 'Add Drag & Drop',
       description: 'Implement drag and drop functionality between columns',
-      columnId: 'todo'
+      columnId: 'todo',
+      comments: []
     },
     {
       id: '3',
       title: 'Style the Interface',
       description: 'Apply responsive design and improve visual aesthetics',
-      columnId: 'progress'
+      columnId: 'progress',
+      comments: []
     }
   ]);
 
@@ -565,6 +629,7 @@ export class KanbanBoardComponent {
   isEditing = signal(false);
   currentCardId = signal<string | null>(null);
   currentColumnId = signal<string | null>(null);
+  currentCardComments = signal<{id: string, text: string, timestamp: Date}[] | null>(null);
 
   // File handling
   selectedFiles: File[] = [];
@@ -574,6 +639,9 @@ export class KanbanBoardComponent {
     title: [''],
     description: ['']
   });
+
+  // Comment form
+  commentText = '';
 
   getCardsForColumn(columnId: string): KanbanCard[] {
     const column = this.columns().find(c => c.id === columnId);
@@ -601,6 +669,34 @@ export class KanbanBoardComponent {
     });
     this.selectedFiles = [];
     this.isModalOpen.set(true);
+  }
+
+  openComments(card: KanbanCard) {
+    // Untuk demo, kita hanya akan menampilkan komentar dalam console
+    console.log('Opening comments for card:', card.id);
+    // Dalam implementasi nyata, Anda akan menunjukkan modal untuk komentar
+  }
+
+  addComment(cardId: string) {
+    if (this.commentText.trim() === '') return;
+
+    const updatedCards = this.cards().map(card => {
+      if (card.id === cardId) {
+        const newComment = {
+          id: Date.now().toString(),
+          text: this.commentText,
+          timestamp: new Date()
+        };
+        return {
+          ...card,
+          comments: [...(card.comments || []), newComment]
+        };
+      }
+      return card;
+    });
+
+    this.cards.set(updatedCards);
+    this.commentText = '';
   }
 
   saveCard() {
