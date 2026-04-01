@@ -1,9 +1,12 @@
 import { Component, signal } from '@angular/core';
+import { KanbanBoardComponent } from './kanban-board/kanban-board.component';
+import { ReactiveFormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-root',
-  templateUrl: './app.html',
-  standalone: false,
+  standalone: true,
+  imports: [KanbanBoardComponent, ReactiveFormsModule],
+  template: '<app-kanban-board></app-kanban-board>',
   styleUrl: './app.css'
 })
 export class App {
